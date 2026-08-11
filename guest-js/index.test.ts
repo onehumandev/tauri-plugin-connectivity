@@ -32,6 +32,13 @@ const DISCONNECTED: ConnectionStatus = {
    connectionType: 'unknown',
 };
 
+const CONNECTED_UNKNOWN_POLICY: ConnectionStatus = {
+   connected: true,
+   metered: null,
+   constrained: null,
+   connectionType: 'ethernet',
+};
+
 beforeEach(() => {
    mockIPC((cmd) => {
       lastCmd = cmd;
@@ -101,6 +108,16 @@ describe('connectionStatus', () => {
       expect(status.connected).toBe(true);
       expect(status.metered).toBe(true);
       expect(status.constrained).toBe(true);
+   });
+
+   it('returns null when connection policy cannot be determined', async () => {
+      mockIPC(() => { return CONNECTED_UNKNOWN_POLICY; });
+
+      const status = await connectionStatus();
+
+      expect(status.connected).toBe(true);
+      expect(status.metered).toBeNull();
+      expect(status.constrained).toBeNull();
    });
 
    it('handles errors thrown by the backend', async () => {

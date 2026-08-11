@@ -22,7 +22,10 @@ connectivity = { git = "https://github.com/silvermine/tauri-plugin-connectivity"
 fn main() -> connectivity::Result<()> {
    let status = connectivity::connection_status()?;
 
-   if status.connected && !status.metered && !status.constrained {
+   if status.connected
+      && status.metered == Some(false)
+      && status.constrained == Some(false)
+   {
       println!("network is suitable for unrestricted work");
    }
 
@@ -36,6 +39,11 @@ fn main() -> connectivity::Result<()> {
 Both detection functions are synchronous because they call platform APIs
 directly. Applications using an async runtime should run them on a blocking
 worker thread.
+
+The `metered` and `constrained` fields are `Option<bool>`. `None` means the
+backend cannot determine the value; in particular, Linux's passive fallback
+does not have cost or constraint information. Callers enforcing a restrictive
+network policy should require `Some(false)` as shown above.
 
 Android and iOS detection remain part of the Tauri plugin's native mobile
 bridge and are not implemented by this crate.

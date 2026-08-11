@@ -16,36 +16,39 @@ export type ConnectionType = 'wifi' | 'ethernet' | 'cellular' | 'unknown';
  */
 export interface ConnectionStatus {
 
-   /** Whether the device has an active internet connection. */
+   /** Whether the device has an active network path. */
    connected: boolean;
 
    /**
     * Whether data usage is billed or limited (e.g. mobile data plans, capped
-    * hotspots).
+    * hotspots), or `null` when the platform cannot determine the cost.
     *
     * Platform mapping:
-    * - **Windows:** `NetworkCostType` is `Unknown`, `Fixed`, or `Variable`
+    * - **Windows:** `NetworkCostType` is `Fixed` or `Variable`; `Unknown`
+    *   returns `null`
     * - **Linux:** NetworkManager primary device `Metered` is `YES` or
-    *   `GUESS_YES`; passive fallback defaults to `false`
+    *   `GUESS_YES`; unknown values and the passive fallback return `null`
     * - **iOS:** `NWPath.isExpensive`
     * - **Android:** absence of `NET_CAPABILITY_NOT_METERED`
     */
-   metered: boolean;
+   metered: boolean | null;
 
    /**
     * Whether the connection is constrained — approaching or over its data limit,
-    * roaming, or background data usage is restricted.
+    * roaming, or background data usage is restricted, or `null` when the
+    * platform cannot determine the constraint state.
     *
     * Platform mapping:
     * - **Windows:** `ConstrainedInternetAccess`, `ApproachingDataLimit`,
     *   `OverDataLimit`, `Roaming`, or `BackgroundDataUsageRestricted`
     * - **Linux:** NetworkManager `Connectivity` is `PORTAL` or `LIMITED`,
     *   primary device is metered, or ModemManager reports cellular roaming;
-    *   passive fallback defaults to `false`
+    *   unknown values and the passive fallback can return `null`
     * - **iOS:** `NWPath.isConstrained` (Low Data Mode)
-    * - **Android:** Data Saver / `RESTRICT_BACKGROUND_STATUS`
+    * - **Android:** missing `NET_CAPABILITY_VALIDATED`, or Data Saver /
+    *   `RESTRICT_BACKGROUND_STATUS` on a metered active network
     */
-   constrained: boolean;
+   constrained: boolean | null;
 
    /**
     * The physical or logical transport used to connect to the network. When

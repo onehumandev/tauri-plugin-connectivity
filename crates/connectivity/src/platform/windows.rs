@@ -133,16 +133,16 @@ pub(crate) fn connection_status() -> Result<ConnectionStatus> {
 
    let status = ConnectionStatus {
       connected: true,
-      metered: is_metered(cost_type),
-      constrained,
+      metered: metered_status(cost_type),
+      constrained: Some(constrained),
       connection_type,
    };
 
    debug!(
       ?cost_type,
-      constrained = status.constrained,
+      constrained = ?status.constrained,
       connection_type = ?status.connection_type,
-      metered = status.metered,
+      metered = ?status.metered,
       "resolved Windows connection status"
    );
 
@@ -191,13 +191,14 @@ fn has_network_connectivity(connectivity_level: NetworkConnectivityLevel) -> boo
 
 /// Windows reports metering through
 /// [`ConnectionCost`](https://learn.microsoft.com/en-us/uwp/api/windows.networking.connectivity.connectioncost?view=winrt-28000).
-/// We treat unknown, fixed-cost, and variable-cost plans as metered, and only
-/// explicit unrestricted plans as not metered.
-fn is_metered(cost_type: NetworkCostType) -> bool {
-   matches!(
-      cost_type,
-      NetworkCostType::Unknown | NetworkCostType::Fixed | NetworkCostType::Variable
-   )
+/// Fixed-cost and variable-cost plans are metered, unrestricted plans are not,
+/// and `Unknown` means Windows did not provide enough cost information.
+fn metered_status(cost_type: NetworkCostType) -> Option<bool> {
+   match cost_type {
+      NetworkCostType::Unrestricted => Some(false),
+      NetworkCostType::Fixed | NetworkCostType::Variable => Some(true),
+      _ => None,
+   }
 }
 
 /// Windows exposes several cost-related flags. We treat approaching/over-limit
@@ -442,11 +443,11 @@ mod tests {
    }
 
    #[test]
-   fn identifies_metered_cost_types() {
-      assert!(is_metered(NetworkCostType::Unknown));
-      assert!(!is_metered(NetworkCostType::Unrestricted));
-      assert!(is_metered(NetworkCostType::Fixed));
-      assert!(is_metered(NetworkCostType::Variable));
+   fn maps_metered_cost_types_without_collapsing_unknown() {
+      assert_eq!(metered_status(NetworkCostType::Unknown), None);
+      assert_eq!(metered_status(NetworkCostType::Unrestricted), Some(false));
+      assert_eq!(metered_status(NetworkCostType::Fixed), Some(true));
+      assert_eq!(metered_status(NetworkCostType::Variable), Some(true));
    }
 
    #[test]

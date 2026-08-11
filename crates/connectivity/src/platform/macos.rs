@@ -281,8 +281,8 @@ fn assemble_status(
 
    ConnectionStatus {
       connected: true,
-      metered,
-      constrained,
+      metered: Some(metered),
+      constrained: Some(constrained),
       connection_type,
    }
 }
@@ -407,8 +407,8 @@ mod tests {
          assemble_status(true, true, true, ConnectionType::Cellular),
          ConnectionStatus {
             connected: true,
-            metered: true,
-            constrained: true,
+            metered: Some(true),
+            constrained: Some(true),
             connection_type: ConnectionType::Cellular,
          }
       );

@@ -77,29 +77,35 @@ pub struct ConnectionStatus {
    pub connected: bool,
 
    /// Whether data usage is billed or limited (e.g. mobile data plans, capped
-   /// hotspots).
+   /// hotspots), or [`None`] when the backend cannot determine the cost.
    ///
    /// Platform mapping:
-   /// - **Windows:** `NetworkCostType` is `Unknown`, `Fixed`, or `Variable`
+   /// - **Windows:** `NetworkCostType` is `Fixed` or `Variable`; `Unknown`
+   ///   returns [`None`]
    /// - **Linux:** NetworkManager primary device `Metered` is `YES` or
-   ///   `GUESS_YES`; passive fallback defaults to `false`
+   ///   `GUESS_YES`; `UNKNOWN`, unavailable device details, and passive fallback
+   ///   return [`None`]
    /// - **iOS:** `NWPath.isExpensive`
    /// - **Android:** absence of `NET_CAPABILITY_NOT_METERED`
-   pub metered: bool,
+   pub metered: Option<bool>,
 
    /// Whether the connection is constrained -- approaching or over its data limit,
-   /// roaming, or background data usage is restricted.
+   /// roaming, or background data usage is restricted -- or [`None`] when the
+   /// backend cannot determine the constraint state.
    ///
    /// Platform mapping:
    /// - **Windows:** `ConstrainedInternetAccess`, `ApproachingDataLimit`,
-   ///   `OverDataLimit`, `Roaming`, or `BackgroundDataUsageRestricted`
+   ///   `OverDataLimit`, `Roaming`, or `BackgroundDataUsageRestricted`;
+   ///   this is computed independently of `metered`, so unknown cost alone does
+   ///   not make the constraint state unknown
    /// - **Linux:** NetworkManager `Connectivity` is `PORTAL` or `LIMITED`,
    ///   primary device is metered, or ModemManager reports cellular roaming;
-   ///   passive fallback defaults to `false`
+   ///   unknown or unavailable source signals and passive fallback can return
+   ///   [`None`]
    /// - **iOS:** `NWPath.isConstrained` (Low Data Mode)
    /// - **Android:** missing `NET_CAPABILITY_VALIDATED`, or Data Saver /
    ///   `RESTRICT_BACKGROUND_STATUS` on a metered active network
-   pub constrained: bool,
+   pub constrained: Option<bool>,
 
    /// The physical or logical transport used to connect to the network.
    pub connection_type: ConnectionType,
@@ -110,8 +116,8 @@ impl ConnectionStatus {
    pub fn disconnected() -> Self {
       Self {
          connected: false,
-         metered: false,
-         constrained: false,
+         metered: Some(false),
+         constrained: Some(false),
          connection_type: ConnectionType::Unknown,
       }
    }
@@ -125,8 +131,8 @@ mod tests {
    fn serializes_connection_status() {
       let status = ConnectionStatus {
          connected: true,
-         metered: true,
-         constrained: false,
+         metered: Some(true),
+         constrained: Some(false),
          connection_type: ConnectionType::Cellular,
       };
       let json = serde_json::to_value(&status).unwrap();
@@ -159,8 +165,8 @@ mod tests {
       let status: ConnectionStatus = serde_json::from_str(json).unwrap();
 
       assert!(status.connected);
-      assert!(!status.metered);
-      assert!(!status.constrained);
+      assert_eq!(status.metered, Some(false));
+      assert_eq!(status.constrained, Some(false));
       assert_eq!(status.connection_type, ConnectionType::Wifi);
    }
 
@@ -184,9 +190,23 @@ mod tests {
       let status = ConnectionStatus::disconnected();
 
       assert!(!status.connected);
-      assert!(!status.metered);
-      assert!(!status.constrained);
+      assert_eq!(status.metered, Some(false));
+      assert_eq!(status.constrained, Some(false));
       assert_eq!(status.connection_type, ConnectionType::Unknown);
+   }
+
+   #[test]
+   fn serializes_unknown_policy_flags_as_null() {
+      let status = ConnectionStatus {
+         connected: true,
+         metered: None,
+         constrained: None,
+         connection_type: ConnectionType::Ethernet,
+      };
+      let json = serde_json::to_value(&status).unwrap();
+
+      assert!(json["metered"].is_null());
+      assert!(json["constrained"].is_null());
    }
 
    #[test]
