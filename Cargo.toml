@@ -5,7 +5,7 @@ exclude = ["examples"]
 
 [package]
 name = "tauri-plugin-connectivity"
-version = "0.1.0"
+version = "0.2.0"
 description = "Network connectivity monitoring plugin for Tauri applications"
 license = "MIT"
 edition = "2024"
